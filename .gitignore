@@ -34,3 +34,5 @@ build/
 
 # Exclude Spring Boot configuration files
 **/src/main/resources/application.properties
+
+.idea

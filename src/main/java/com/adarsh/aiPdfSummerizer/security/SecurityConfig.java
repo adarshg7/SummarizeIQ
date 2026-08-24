@@ -48,6 +48,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/ai/test").permitAll()     // dev-only: test AI without token
+                        .requestMatchers("/api/debug/**").permitAll()    // dev-only: debug endpoints
+                        .requestMatchers("/ws/**").permitAll()           // permit websocket handshake
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

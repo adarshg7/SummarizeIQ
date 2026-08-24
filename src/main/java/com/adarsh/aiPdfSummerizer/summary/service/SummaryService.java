@@ -10,6 +10,8 @@ import com.adarsh.aiPdfSummerizer.summary.entity.Summary;
 import com.adarsh.aiPdfSummerizer.summary.entity.SummaryStatus;
 import com.adarsh.aiPdfSummerizer.summary.repository.SummaryRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true) // keeps session open for lazy loads; use readOnly for reads
 public class SummaryService {
+
+    private static final Logger log = LoggerFactory.getLogger(SummaryService.class);
 
     private final SummaryRepository summaryRepository;
     private final DocumentService documentService;
@@ -40,16 +44,24 @@ public class SummaryService {
         String prompt = "Summarize the following document in a concise paragraph:\n\n"
                 + document.getExtractedText();
 
+        Long savedId = saved.getId(); // capture only the ID — entity will be detached after tx ends
+
         aiJobQueue.submit(new AiJob(
                 prompt,
                 result -> {
-                    saved.setContent(result);
-                    saved.setStatus(SummaryStatus.COMPLETED);
-                    summaryRepository.save(saved);
+                    // Re-fetch inside the worker thread — each repo.save() manages its own tx
+                    summaryRepository.findById(savedId).ifPresent(s -> {
+                        s.setContent(result);
+                        s.setStatus(SummaryStatus.COMPLETED);
+                        summaryRepository.save(s);
+                    });
                 },
                 error -> {
-                    saved.setStatus(SummaryStatus.FAILED);
-                    summaryRepository.save(saved);
+                    log.error("[SummaryService] AI job FAILED for summaryId={} — {}", savedId, error.getMessage(), error);
+                    summaryRepository.findById(savedId).ifPresent(s -> {
+                        s.setStatus(SummaryStatus.FAILED);
+                        summaryRepository.save(s);
+                    });
                 }
         ));
 

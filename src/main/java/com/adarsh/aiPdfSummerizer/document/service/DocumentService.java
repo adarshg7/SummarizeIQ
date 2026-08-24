@@ -4,6 +4,7 @@ import com.adarsh.aiPdfSummerizer.common.exception.BadRequestException;
 import com.adarsh.aiPdfSummerizer.common.exception.ResourceNotFoundException;
 import com.adarsh.aiPdfSummerizer.document.entity.Document;
 import com.adarsh.aiPdfSummerizer.document.repository.DocumentRepository;
+import com.adarsh.aiPdfSummerizer.embedding.service.EmbeddingIndexService;
 import com.adarsh.aiPdfSummerizer.user.entity.User;
 import com.adarsh.aiPdfSummerizer.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class DocumentService {
 
     private final DocumentRepository documentRepository;
     private final UserRepository userRepository;
+    private final EmbeddingIndexService embeddingIndexService;
 
     private static final String UPLOAD_DIR = "uploads/";
 
@@ -54,7 +56,10 @@ public class DocumentService {
             document.setExtractedText(extractedText);
             document.setUploadedBy(uploader);
 
-            return documentRepository.save(document);
+            Document savedDocument = documentRepository.save(document);
+            embeddingIndexService.indexDocument(savedDocument.getId()); // pass ID, not entity
+            
+            return savedDocument;
 
         } catch (IOException e) {
             throw new RuntimeException("Failed to process uploaded file: " + e.getMessage(), e);

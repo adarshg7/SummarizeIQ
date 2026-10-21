@@ -48,8 +48,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/ai/test").permitAll()     // dev-only: test AI without token
-                        .requestMatchers("/api/debug/**").permitAll()    // dev-only: debug endpoints
+                        .requestMatchers("/api/ai/test").permitAll()     // dev-only: test AI health without token
                         .requestMatchers("/ws/**").permitAll()           // permit websocket handshake
                         // Static frontend files — no JWT needed to load the HTML/CSS/JS
                         .requestMatchers("/", "/index.html", "/app.html", "/*.css", "/*.js", "/favicon.ico").permitAll()

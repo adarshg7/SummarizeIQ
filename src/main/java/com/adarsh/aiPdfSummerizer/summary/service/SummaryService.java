@@ -35,13 +35,19 @@ public class SummaryService {
             throw new BadRequestException("Document has no extractable text");
         }
 
-        Summary summary = new Summary();
+        // Check if a summary already exists for this document to avoid duplicates
+        Summary summary = summaryRepository.findTopByDocumentIdOrderByIdDesc(documentId)
+                .orElseGet(() -> {
+                    Summary s = new Summary();
+                    s.setDocument(document);
+                    return s;
+                });
+
         summary.setContent("");
         summary.setStatus(SummaryStatus.PENDING);
-        summary.setDocument(document);
         Summary saved = summaryRepository.save(summary);
 
-        String prompt = "Summarize the following document in a concise paragraph:\n\n"
+        String prompt = "Please summarize the following document clearly and concisely with key takeaways and structured bullet points:\n\n"
                 + document.getExtractedText();
 
         Long savedId = saved.getId(); // capture only the ID — entity will be detached after tx ends
@@ -69,7 +75,7 @@ public class SummaryService {
     }
 
     public SummaryResponse getByDocumentId(Long documentId) {
-        Summary summary = summaryRepository.findByDocumentId(documentId)
+        Summary summary = summaryRepository.findTopByDocumentIdOrderByIdDesc(documentId)
                 .orElseThrow(() -> new BadRequestException("No summary exists for this document yet"));
         return SummaryResponse.from(summary);
     }

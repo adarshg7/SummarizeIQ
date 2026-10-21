@@ -77,4 +77,8 @@ public class DocumentService {
         return documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
     }
+
+    public java.util.List<Document> getUserDocuments(String email) {
+        return documentRepository.findByUploadedByEmailOrderByIdDesc(email);
+    }
 }

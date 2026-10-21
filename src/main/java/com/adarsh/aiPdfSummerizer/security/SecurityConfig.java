@@ -51,6 +51,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/ai/test").permitAll()     // dev-only: test AI without token
                         .requestMatchers("/api/debug/**").permitAll()    // dev-only: debug endpoints
                         .requestMatchers("/ws/**").permitAll()           // permit websocket handshake
+                        // Static frontend files — no JWT needed to load the HTML/CSS/JS
+                        .requestMatchers("/", "/index.html", "/app.html", "/*.css", "/*.js", "/favicon.ico").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

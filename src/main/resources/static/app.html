@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SummarizeIQ — Dashboard</title>
+  <meta name="description" content="AI PDF Summarizer dashboard — upload, summarize, and chat with your documents." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ===== HEADER ===== -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-icon-sm">📄</div>
+      <span class="brand-name-sm">SummarizeIQ</span>
+    </div>
+    <div class="header-right">
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <span id="userName">Loading...</span>
+        <span class="user-role-badge" id="userRoleBadge"></span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <!-- Nav -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Navigation</div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" id="navUpload" onclick="showPage('upload')">
+          <span class="nav-icon">⬆️</span> Upload PDF
+        </div>
+        <div class="nav-item" id="navChat" onclick="showPage('chat')">
+          <span class="nav-icon">💬</span> AI Chat
+        </div>
+      </nav>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- Recent documents -->
+    <div class="sidebar-section" style="padding-bottom: 8px;">
+      <div class="sidebar-label">Recent Documents</div>
+    </div>
+    <div class="doc-list" id="docList">
+      <div class="empty-state" style="padding: 20px 10px;">
+        <span class="empty-icon" style="font-size:28px;">📂</span>
+        <p style="font-size:12px;">No documents yet.<br/>Upload a PDF to get started.</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main-content">
+
+    <!-- ===== UPLOAD PAGE ===== -->
+    <div class="page active" id="pageUpload">
+      <h1 class="page-title">Upload a PDF</h1>
+      <p class="page-sub">Drop your PDF below and let AI extract and summarize its contents instantly.</p>
+
+      <!-- Drop zone -->
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
+           ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+        <span class="upload-icon">📤</span>
+        <h3>Drag & drop your PDF here</h3>
+        <p>or click to browse files</p>
+        <p style="margin-top:8px; font-size:12px; color: var(--text-dim);">Max file size: 10 MB · PDF only</p>
+        <input type="file" id="fileInput" accept=".pdf,application/pdf" onchange="handleFileSelect(event)" />
+        <button type="button" class="upload-btn" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+          📂 Choose File
+        </button>
+      </div>
+
+      <!-- Upload progress -->
+      <div class="upload-progress" id="uploadProgress">
+        <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+        <span class="progress-label" id="progressLabel">Uploading...</span>
+      </div>
+
+      <!-- Selected file chip -->
+      <div id="selectedFileChip" style="display:none; margin-top:16px; align-items:center; gap:10px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:8px; padding:10px 16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm);">
+          <span style="font-size:18px;">📄</span>
+          <span id="selectedFileName" style="font-size:13px; font-weight:500;"></span>
+          <span id="selectedFileSize" style="font-size:11px; color:var(--text-dim);"></span>
+        </div>
+        <button class="btn-summarize" id="btnUpload" onclick="doUpload()">
+          <span id="uploadBtnText">⬆️ Upload & Extract</span>
+          <div class="spinner" id="uploadSpinner"></div>
+        </button>
+        <button class="btn-sm" type="button" onclick="clearSelectedFile()" title="Cancel file selection">✖ Clear</button>
+      </div>
+
+      <!-- Summary section -->
+      <div class="summary-card" id="summaryCard" style="display:none;">
+        <div class="summary-card-header">
+          <div class="summary-header-left">
+            <h2 class="summary-card-title" id="summaryDocName">📄 Document Summary</h2>
+            <span class="summary-status-badge badge-pending" id="summaryStatusBadge">⏳ Awaiting Summary</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button class="btn-summarize" id="btnSummarize" onclick="doSummarize()">
+              <div class="spinner" id="summarySpinner"></div>
+              <span id="summarizeBtnText">✨ Generate Summary</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Meta chips (word count, reading time) -->
+        <div class="summary-meta-chips" id="summaryMetaChips" style="display:none;">
+          <span class="meta-chip" id="metaWords">📝 0 words</span>
+          <span class="meta-chip" id="metaReadTime">⏱️ 1 min read</span>
+          <span class="meta-chip">🤖 Gemini AI (Fast)</span>
+        </div>
+
+        <!-- Error banner -->
+        <div class="summary-error-banner" id="summaryErrorBanner" style="display:none;">
+          <div class="error-icon">⚠️</div>
+          <div class="summary-error-content">
+            <strong>Summarization Failed</strong>
+            <span id="summaryErrorMessage">Something went wrong while generating the summary.</span>
+            <div style="margin-top:8px;">
+              <button class="btn-sm danger" onclick="doSummarize()">🔄 Retry Now</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary container -->
+        <div class="summary-container" id="summaryContainer">
+          <!-- Animated loading box -->
+          <div class="summary-loading-box" id="summaryLoadingBox" style="display:none;">
+            <div class="loading-orbit"></div>
+            <div class="loading-status-text" id="loadingStatusText">Analyzing document with Gemini AI...</div>
+            <div class="loading-steps-list">
+              <div class="step-item active" id="step1">📄 Extracting text</div>
+              <div class="step-item active" id="step2">🧠 Gemini Analysis</div>
+              <div class="step-item" id="step3">✨ Formatting Summary</div>
+            </div>
+          </div>
+
+          <!-- Summary text / rendered markdown -->
+          <div class="summary-text summary-markdown" id="summaryText">
+            Click "Generate Summary" to let AI summarize this document.
+          </div>
+        </div>
+
+        <!-- Actions toolbar -->
+        <div class="summary-actions-toolbar" id="summaryActionsToolbar">
+          <div class="summary-actions-left">
+            <button class="btn-sm success" onclick="openChatForDoc()" id="btnChatWithDoc">💬 Chat with this document</button>
+            <button class="btn-sm" onclick="copySummary()" id="btnCopySummary">📋 Copy summary</button>
+            <button class="btn-sm" onclick="downloadSummary()" id="btnDownloadSummary">📥 Download .txt</button>
+          </div>
+          <div class="summary-actions-right">
+            <span style="font-size:11px; color:var(--text-dim);" id="summaryTimestamp"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CHAT PAGE ===== -->
+    <div class="page" id="pageChat" style="padding:0;">
+      <div class="chat-layout" style="height:calc(100vh - var(--header-h));">
+
+        <!-- Chat top bar -->
+        <div class="chat-header">
+          <h1 style="font-size:18px; font-weight:700; margin-bottom:12px;">AI Chat</h1>
+          <div class="chat-session-bar">
+            <div class="session-info" id="sessionInfo">No active session</div>
+            <button class="btn-sm" id="btnStartSession" onclick="startChatSession()">🚀 Start Session</button>
+            <button class="btn-sm danger" id="btnCloseSession" onclick="closeChatSession()" style="display:none;">✖ Close Session</button>
+            <button class="btn-sm" id="btnAssignAgent" onclick="assignAgent()" style="display:none;">🎯 Assign Agent</button>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div class="chat-messages" id="chatMessages">
+          <div class="empty-chat">
+            <span class="empty-icon">🤖</span>
+            <h3>No messages yet</h3>
+            <p>Start a session to begin chatting with the AI about your documents.</p>
+          </div>
+        </div>
+
+        <!-- Input -->
+        <div class="chat-input-area">
+          <div class="chat-input-row">
+            <textarea class="chat-input" id="chatInput" rows="1" placeholder="Ask anything about your document..."
+              onkeydown="handleChatKeydown(event)" oninput="autoResize(this)"></textarea>
+            <button class="btn-send" id="btnSend" onclick="sendChatMessage()" disabled title="Send message">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+          <p style="font-size:11px; color:var(--text-dim); margin-top:8px;">Press Enter to send · Shift+Enter for newline</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- SockJS + STOMP CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+
+<script>
+// ============================================================
+//  STATE
+// ============================================================
+const API_BASE = '';
+let token = localStorage.getItem('token');
+let user = JSON.parse(localStorage.getItem('user') || 'null');
+let selectedFile = null;
+let currentDocId = null;
+let currentRawSummary = '';
+let currentSessionId = null;
+let stompClient = null;
+let wsConnected = false;
+let activePollTimer = null;
+let docs = {};
+
+// ============================================================
+//  INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  if (!token || !user) { window.location.href = 'index.html'; return; }
+  renderUserInfo();
+  loadDocsFromStorage();
+  loadDocsFromServer();
+  showPage('upload');
+});
+
+function renderUserInfo() {
+  document.getElementById('userName').textContent = user.fullName;
+  document.getElementById('userAvatar').textContent = user.fullName.charAt(0).toUpperCase();
+  const badge = document.getElementById('userRoleBadge');
+  badge.textContent = user.role.replace('_', ' ');
+  badge.className = `user-role-badge role-${user.role}`;
+}
+
+// ============================================================
+//  PAGE NAV
+// ============================================================
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page${capitalize(page)}`).classList.add('active');
+  document.getElementById(`nav${capitalize(page)}`).classList.add('active');
+}
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function openChatForDoc() {
+  showPage('chat');
+  if (!currentSessionId) {
+    startChatSession();
+  }
+}
+
+// ============================================================
+//  AUTH
+// ============================================================
+function logout() {
+  if (activePollTimer) clearInterval(activePollTimer);
+  disconnectWebSocket();
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = 'index.html';
+}
+
+// ============================================================
+//  API HELPER
+// ============================================================
+async function api(path, options = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { 'Authorization': `Bearer ${token}`, ...(options.headers || {}) }
+  });
+  if (res.status === 401) { logout(); return; }
+  return res;
+}
+
+// ============================================================
+//  FILE UPLOAD
+// ============================================================
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('dragging');
+  const file = e.dataTransfer.files[0];
+  if (file) selectFile(file);
+}
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.add('dragging');
+}
+function handleDragLeave() {
+  document.getElementById('uploadZone').classList.remove('dragging');
+}
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) selectFile(file);
+}
+
+function selectFile(file) {
+  if (!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) {
+    showToast('Please select a valid PDF file.', 'error');
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('File too large (max 10 MB).', 'error');
+    return;
+  }
+  selectedFile = file;
+  document.getElementById('selectedFileName').textContent = file.name;
+  document.getElementById('selectedFileSize').textContent = `(${(file.size/1024).toFixed(1)} KB)`;
+  const chip = document.getElementById('selectedFileChip');
+  chip.style.display = 'flex';
+}
+
+function clearSelectedFile() {
+  selectedFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('selectedFileChip').style.display = 'none';
+}
+
+async function doUpload() {
+  if (!selectedFile) return;
+  const btn = document.getElementById('btnUpload');
+  const spinner = document.getElementById('uploadSpinner');
+  const txt = document.getElementById('uploadBtnText');
+  btn.disabled = true; spinner.style.display = 'block'; txt.style.display = 'none';
+  showUploadProgress(10, 'Uploading PDF...');
+
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+
+  let prog = 10;
+  const iv = setInterval(() => {
+    prog = Math.min(prog + 15, 88);
+    setProgress(prog, 'Extracting document text...');
+  }, 250);
+
+  try {
+    const res = await api('/api/documents/upload', { method: 'POST', body: formData });
+    clearInterval(iv);
+
+    if (!res || !res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Upload failed');
+    }
+    const data = await res.json();
+    currentDocId = data.data;
+
+    setProgress(100, 'Upload & Extraction complete! ✓');
+    setTimeout(() => hideUploadProgress(), 1000);
+
+    showToast(`"${selectedFile.name}" uploaded successfully!`, 'success');
+    addDocToList(currentDocId, selectedFile.name, false);
+    selectDoc(currentDocId);
+    clearSelectedFile();
+
+    // Automatically trigger summary generation after upload
+    doSummarize();
+  } catch (err) {
+    clearInterval(iv);
+    hideUploadProgress();
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false; spinner.style.display = 'none'; txt.style.display = 'inline';
+  }
+}
+
+function showUploadProgress(val, label) {
+  const p = document.getElementById('uploadProgress');
+  p.classList.add('visible');
+  setProgress(val, label);
+}
+function hideUploadProgress() {
+  document.getElementById('uploadProgress').classList.remove('visible');
+}
+function setProgress(val, label) {
+  document.getElementById('progressFill').style.width = val + '%';
+  document.getElementById('progressLabel').textContent = label;
+}
+
+// ============================================================
+//  SUMMARY & POLLING
+// ============================================================
+function showSummaryCard(name) {
+  document.getElementById('summaryCard').style.display = 'block';
+  document.getElementById('summaryDocName').textContent = `📄 ${name}`;
+  document.getElementById('summaryErrorBanner').style.display = 'none';
+}
+
+async function doSummarize() {
+  if (!currentDocId) {
+    showToast('Please select or upload a document first.', 'error');
+    return;
+  }
+
+  // Cancel any active polling
+  if (activePollTimer) {
+    clearInterval(activePollTimer);
+    activePollTimer = null;
+  }
+
+  const btn = document.getElementById('btnSummarize');
+  const spinner = document.getElementById('summarySpinner');
+  const txt = document.getElementById('summarizeBtnText');
+
+  // UI state: generating
+  btn.disabled = true;
+  spinner.style.display = 'block';
+  txt.textContent = 'AI Summarizing...';
+  setBadge('pending', '⏳ AI Processing...');
+
+  document.getElementById('summaryErrorBanner').style.display = 'none';
+  document.getElementById('summaryMetaChips').style.display = 'none';
+  document.getElementById('summaryText').style.display = 'none';
+
+  const loadingBox = document.getElementById('summaryLoadingBox');
+  loadingBox.style.display = 'flex';
+  document.getElementById('loadingStatusText').textContent = 'Submitting document to Gemini AI...';
+  document.getElementById('step1').className = 'step-item active';
+  document.getElementById('step2').className = 'step-item';
+  document.getElementById('step3').className = 'step-item';
+
+  try {
+    const res = await api(`/api/summary/${currentDocId}`, { method: 'POST' });
+    if (!res || !res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to start summarization');
+    }
+
+    document.getElementById('loadingStatusText').textContent = 'Gemini AI is analyzing and synthesizing text...';
+    document.getElementById('step2').className = 'step-item active';
+
+    // Start polling for the completed summary
+    startPollingSummary(currentDocId);
+
+  } catch (err) {
+    loadingBox.style.display = 'none';
+    document.getElementById('summaryText').style.display = 'block';
+    setBadge('error', '❌ Failed');
+    showSummaryError(err.message || 'Failed to initiate summarization.');
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    txt.textContent = '✨ Retry Summary';
+    showToast(err.message, 'error');
+  }
+}
+
+function startPollingSummary(docId) {
+  let attempts = 0;
+  const maxAttempts = 40; // 40 * 1.8s ~ 72 seconds
+  const step3 = document.getElementById('step3');
+
+  activePollTimer = setInterval(async () => {
+    attempts++;
+
+    if (attempts === 3 && step3) {
+      step3.className = 'step-item active';
+      document.getElementById('loadingStatusText').textContent = 'Formatting executive summary & key takeaways...';
+    }
+
+    try {
+      const res = await api(`/api/summary/${docId}`);
+      if (!res || !res.ok) {
+        if (attempts >= maxAttempts) {
+          clearInterval(activePollTimer);
+          activePollTimer = null;
+          handlePollingTimeout();
+        }
+        return;
+      }
+
+      const data = await res.json();
+      const summaryData = data.data;
+
+      if (!summaryData) return;
+
+      if (summaryData.status === 'COMPLETED' && summaryData.content && summaryData.content.trim().length > 0) {
+        clearInterval(activePollTimer);
+        activePollTimer = null;
+        displayCompletedSummary(summaryData.content);
+        updateDocStatus(docId, true);
+        showToast('Summary ready!', 'success');
+      } else if (summaryData.status === 'FAILED') {
+        clearInterval(activePollTimer);
+        activePollTimer = null;
+        handleSummaryFailure();
+      } else if (attempts >= maxAttempts) {
+        clearInterval(activePollTimer);
+        activePollTimer = null;
+        handlePollingTimeout();
+      }
+    } catch (e) {
+      if (attempts >= maxAttempts) {
+        clearInterval(activePollTimer);
+        activePollTimer = null;
+        handlePollingTimeout();
+      }
+    }
+  }, 1800);
+}
+
+function displayCompletedSummary(content) {
+  currentRawSummary = content;
+  const loadingBox = document.getElementById('summaryLoadingBox');
+  loadingBox.style.display = 'none';
+
+  const textEl = document.getElementById('summaryText');
+  textEl.innerHTML = renderMarkdown(content);
+  textEl.style.display = 'block';
+
+  setBadge('done', '✅ Summarized');
+
+  // Word count & read time chips
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  const readTime = Math.max(1, Math.round(words / 180));
+  document.getElementById('metaWords').textContent = `📝 ${words} words`;
+  document.getElementById('metaReadTime').textContent = `⏱️ ${readTime} min read`;
+  document.getElementById('summaryMetaChips').style.display = 'flex';
+  document.getElementById('summaryTimestamp').textContent = `Updated: ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+
+  // Reset button to regenerate
+  const btn = document.getElementById('btnSummarize');
+  const spinner = document.getElementById('summarySpinner');
+  const txt = document.getElementById('summarizeBtnText');
+  btn.disabled = false;
+  spinner.style.display = 'none';
+  txt.textContent = '🔄 Regenerate';
+}
+
+function handleSummaryFailure() {
+  const loadingBox = document.getElementById('summaryLoadingBox');
+  loadingBox.style.display = 'none';
+
+  setBadge('error', '❌ Failed');
+  showSummaryError('AI was unable to generate a summary. The document might contain insufficient or scanned text.');
+
+  const btn = document.getElementById('btnSummarize');
+  const spinner = document.getElementById('summarySpinner');
+  const txt = document.getElementById('summarizeBtnText');
+  btn.disabled = false;
+  spinner.style.display = 'none';
+  txt.textContent = '✨ Try Again';
+}
+
+function handlePollingTimeout() {
+  const loadingBox = document.getElementById('summaryLoadingBox');
+  loadingBox.style.display = 'none';
+
+  setBadge('pending', '⏳ Still Processing');
+  showSummaryError('Generation is taking longer than usual. Gemini might be busy. Click retry or check back in a few seconds.');
+
+  const btn = document.getElementById('btnSummarize');
+  const spinner = document.getElementById('summarySpinner');
+  const txt = document.getElementById('summarizeBtnText');
+  btn.disabled = false;
+  spinner.style.display = 'none';
+  txt.textContent = '🔄 Check / Retry';
+}
+
+function showSummaryError(msg) {
+  const banner = document.getElementById('summaryErrorBanner');
+  document.getElementById('summaryErrorMessage').textContent = msg;
+  banner.style.display = 'flex';
+}
+
+function setBadge(type, label) {
+  const badge = document.getElementById('summaryStatusBadge');
+  badge.textContent = label;
+  badge.className = `summary-status-badge badge-${type}`;
+}
+
+function copySummary() {
+  const text = currentRawSummary || document.getElementById('summaryText').innerText;
+  if (!text || text.includes('Click "Generate Summary"')) {
+    showToast('No summary to copy yet.', 'info');
+    return;
+  }
+  navigator.clipboard.writeText(text).then(() => {
+    const copyBtn = document.getElementById('btnCopySummary');
+    const originalText = copyBtn.textContent;
+    copyBtn.textContent = '✅ Copied!';
+    showToast('Summary copied to clipboard!', 'success');
+    setTimeout(() => { copyBtn.textContent = originalText; }, 2000);
+  });
+}
+
+function downloadSummary() {
+  const text = currentRawSummary || document.getElementById('summaryText').innerText;
+  if (!text || text.includes('Click "Generate Summary"')) {
+    showToast('No summary available to download.', 'info');
+    return;
+  }
+  const doc = docs[currentDocId];
+  const baseName = doc ? doc.name.replace(/\.[^/.]+$/, "") : 'document';
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${baseName}_Summary.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  showToast('Summary downloaded!', 'success');
+}
+
+// Markdown parser for AI output
+function renderMarkdown(md) {
+  if (!md) return '';
+  let html = md
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Bold
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Headings
+  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+  html = html.replace(/^# (.*$)/gim, '<h2>$1</h2>');
+
+  // Lists & paragraphs
+  const lines = html.split('\n');
+  let inUl = false;
+  let inOl = false;
+  const out = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    const isBullet = line.startsWith('* ') || line.startsWith('- ');
+    const isNumbered = /^\d+\.\s+/.test(line);
+
+    if (isBullet) {
+      if (inOl) { out.push('</ol>'); inOl = false; }
+      if (!inUl) { out.push('<ul>'); inUl = true; }
+      out.push(`<li>${line.substring(2)}</li>`);
+    } else if (isNumbered) {
+      if (inUl) { out.push('</ul>'); inUl = false; }
+      if (!inOl) { out.push('<ol>'); inOl = true; }
+      out.push(`<li>${line.replace(/^\d+\.\s+/, '')}</li>`);
+    } else {
+      if (inUl) { out.push('</ul>'); inUl = false; }
+      if (inOl) { out.push('</ol>'); inOl = false; }
+      if (line.length > 0) {
+        if (line.startsWith('<h2>') || line.startsWith('<h3>')) {
+          out.push(line);
+        } else {
+          out.push(`<p>${line}</p>`);
+        }
+      }
+    }
+  }
+  if (inUl) out.push('</ul>');
+  if (inOl) out.push('</ol>');
+
+  return out.join('\n');
+}
+
+// ============================================================
+//  DOC LIST & PERSISTENCE
+// ============================================================
+function loadDocsFromStorage() {
+  try {
+    const saved = localStorage.getItem(`summarizeiq_docs_${user.email || 'default'}`);
+    if (saved) {
+      docs = JSON.parse(saved);
+      renderDocList();
+    }
+  } catch (_) {}
+}
+
+function saveDocsToStorage() {
+  try {
+    localStorage.setItem(`summarizeiq_docs_${user.email || 'default'}`, JSON.stringify(docs));
+  } catch (_) {}
+}
+
+async function loadDocsFromServer() {
+  try {
+    const res = await api('/api/documents');
+    if (!res || !res.ok) return;
+    const json = await res.json();
+    const list = json.data || [];
+
+    list.forEach(item => {
+      if (!docs[item.id]) {
+        docs[item.id] = { name: item.fileName, summarized: false };
+      }
+    });
+
+    saveDocsToStorage();
+    renderDocList();
+
+    // Check summaries for existing documents
+    Object.keys(docs).forEach(async (id) => {
+      try {
+        const sRes = await api(`/api/summary/${id}`);
+        if (sRes && sRes.ok) {
+          const sJson = await sRes.json();
+          if (sJson.data && sJson.data.status === 'COMPLETED') {
+            docs[id].summarized = true;
+            renderDocList();
+            saveDocsToStorage();
+          }
+        }
+      } catch (_) {}
+    });
+
+    // Auto-select latest document if none selected
+    if (!currentDocId && list.length > 0) {
+      selectDoc(list[0].id);
+    }
+  } catch (_) {}
+}
+
+function addDocToList(id, name, summarized = false) {
+  docs[id] = { name, summarized };
+  saveDocsToStorage();
+  renderDocList();
+}
+
+function updateDocStatus(id, summarized) {
+  if (docs[id]) {
+    docs[id].summarized = summarized;
+    saveDocsToStorage();
+  }
+  renderDocList();
+}
+
+function renderDocList() {
+  const container = document.getElementById('docList');
+  const entries = Object.entries(docs);
+  if (entries.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding:20px 10px;">
+        <span class="empty-icon" style="font-size:28px;">📂</span>
+        <p style="font-size:12px;">No documents yet.<br/>Upload a PDF to get started.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = entries.map(([id, doc]) => `
+    <div class="doc-item ${parseInt(id) === currentDocId ? 'active' : ''}" onclick="selectDoc(${id})">
+      <span class="doc-icon">📄</span>
+      <div class="doc-info">
+        <div class="doc-name" title="${doc.name}">${doc.name}</div>
+        <div class="doc-meta">Document #${id}</div>
+      </div>
+      <div class="doc-status ${doc.summarized ? 'summarized' : 'pending'}" title="${doc.summarized ? 'Summarized' : 'Awaiting Summary'}"></div>
+    </div>
+  `).reverse().join('');
+}
+
+async function selectDoc(id) {
+  if (activePollTimer) {
+    clearInterval(activePollTimer);
+    activePollTimer = null;
+  }
+
+  currentDocId = parseInt(id);
+  const doc = docs[id];
+  if (!doc) return;
+
+  showSummaryCard(doc.name);
+  renderDocList();
+
+  const loadingBox = document.getElementById('summaryLoadingBox');
+  const textEl = document.getElementById('summaryText');
+  const btn = document.getElementById('btnSummarize');
+  const spinner = document.getElementById('summarySpinner');
+  const txt = document.getElementById('summarizeBtnText');
+
+  loadingBox.style.display = 'none';
+  textEl.style.display = 'block';
+
+  // Check if summary already exists
+  try {
+    const res = await api(`/api/summary/${id}`);
+    if (res && res.ok) {
+      const data = await res.json();
+      const s = data.data;
+
+      if (s && s.status === 'COMPLETED' && s.content && s.content.trim().length > 0) {
+        displayCompletedSummary(s.content);
+        updateDocStatus(id, true);
+        return;
+      } else if (s && s.status === 'PENDING') {
+        // Resume polling if pending!
+        btn.disabled = true;
+        spinner.style.display = 'block';
+        txt.textContent = 'AI Summarizing...';
+        setBadge('pending', '⏳ AI Processing...');
+        loadingBox.style.display = 'flex';
+        textEl.style.display = 'none';
+        startPollingSummary(id);
+        return;
+      }
+    }
+  } catch (_) {}
+
+  // Default unsummarized state
+  currentRawSummary = '';
+  textEl.innerHTML = '<p>Click <strong>"Generate Summary"</strong> above to let Gemini AI analyze and synthesize this document.</p>';
+  setBadge('pending', '⏳ Awaiting Summary');
+  document.getElementById('summaryMetaChips').style.display = 'none';
+  btn.disabled = false;
+  spinner.style.display = 'none';
+  txt.textContent = '✨ Generate Summary';
+}
+
+// ============================================================
+//  WEBSOCKET / CHAT
+// ============================================================
+function connectWebSocket(sessionId) {
+  if (stompClient && wsConnected) return;
+
+  const socket = new SockJS('/ws');
+  stompClient = new StompJs.Client({
+    webSocketFactory: () => socket,
+    connectHeaders: { Authorization: `Bearer ${token}` },
+    reconnectDelay: 3000,
+    onConnect: () => {
+      wsConnected = true;
+      showToast('Connected to real-time chat', 'success');
+      // Subscribe to user-specific messages
+      stompClient.subscribe(`/user/queue/messages`, (msg) => {
+        const message = JSON.parse(msg.body);
+        appendMessage(message.content, message.fromAi ? 'ai' : 'user', message.senderName, message.sentAt);
+        removeTypingIndicator();
+      });
+    },
+    onDisconnect: () => {
+      wsConnected = false;
+    },
+    onStompError: (frame) => {
+      console.error('STOMP error', frame);
+      showToast('Chat connection error', 'error');
+    }
+  });
+  stompClient.activate();
+}
+
+function disconnectWebSocket() {
+  if (stompClient) { stompClient.deactivate(); wsConnected = false; }
+}
+
+async function startChatSession() {
+  try {
+    const res = await api('/api/chat/sessions', { method: 'POST' });
+    if (!res || !res.ok) throw new Error('Failed to start session');
+    const data = await res.json();
+    currentSessionId = data.data.id;
+    updateSessionUI(data.data);
+    connectWebSocket(currentSessionId);
+    document.getElementById('btnSend').disabled = false;
+    clearChatMessages();
+    appendSystemMessage('Session started! Ask anything about your documents.');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function closeChatSession() {
+  if (!currentSessionId) return;
+  try {
+    const res = await api(`/api/chat/sessions/${currentSessionId}/close`, { method: 'PATCH' });
+    if (!res || !res.ok) throw new Error('Failed to close session');
+    const data = await res.json();
+    currentSessionId = null;
+    updateSessionUI(null);
+    document.getElementById('btnSend').disabled = true;
+    disconnectWebSocket();
+    appendSystemMessage('Session closed.');
+    showToast('Chat session closed', 'info');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function assignAgent() {
+  if (!currentSessionId) return;
+  try {
+    const res = await api(`/api/chat/sessions/${currentSessionId}/assign`, { method: 'PATCH' });
+    if (!res || !res.ok) throw new Error('Failed to assign agent');
+    const data = await res.json();
+    updateSessionUI(data.data);
+    showToast('You are now the assigned agent!', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function updateSessionUI(session) {
+  const info = document.getElementById('sessionInfo');
+  const btnStart = document.getElementById('btnStartSession');
+  const btnClose = document.getElementById('btnCloseSession');
+  const btnAssign = document.getElementById('btnAssignAgent');
+
+  if (!session) {
+    info.innerHTML = 'No active session';
+    btnStart.style.display = 'block';
+    btnClose.style.display = 'none';
+    btnAssign.style.display = 'none';
+    return;
+  }
+  info.innerHTML = `Session <strong>#${session.id}</strong> · Status: <strong>${session.status}</strong>${session.agentName ? ` · Agent: <strong>${session.agentName}</strong>` : ''}`;
+  btnStart.style.display = 'none';
+  btnClose.style.display = 'block';
+  if (user.role === 'SUPPORT_AGENT' && !session.agentName) {
+    btnAssign.style.display = 'block';
+  } else {
+    btnAssign.style.display = 'none';
+  }
+}
+
+function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const content = input.value.trim();
+  if (!content || !currentSessionId || !wsConnected) return;
+
+  appendMessage(content, 'user', user.fullName, new Date().toISOString());
+  input.value = '';
+  autoResize(input);
+  showTypingIndicator();
+
+  stompClient.publish({
+    destination: '/app/chat.send',
+    body: JSON.stringify({ chatSessionId: currentSessionId, content })
+  });
+}
+
+function handleChatKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChatMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function appendMessage(content, type, sender, sentAt) {
+  const container = document.getElementById('chatMessages');
+  // Remove empty state
+  const empty = container.querySelector('.empty-chat');
+  if (empty) empty.remove();
+
+  const time = sentAt ? new Date(sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  const isAi = type === 'ai';
+  const div = document.createElement('div');
+  div.className = `msg-bubble ${type}`;
+  div.innerHTML = `
+    <div class="msg-avatar">${isAi ? '🤖' : user.fullName.charAt(0).toUpperCase()}</div>
+    <div>
+      <div class="msg-content">${escapeHtml(content)}</div>
+      <div class="msg-time">${sender}${time ? ' · ' + time : ''}</div>
+    </div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function appendSystemMessage(text) {
+  const container = document.getElementById('chatMessages');
+  const empty = container.querySelector('.empty-chat');
+  if (empty) empty.remove();
+  const div = document.createElement('div');
+  div.style.cssText = 'text-align:center; font-size:12px; color:var(--text-dim); padding: 8px 0;';
+  div.textContent = `— ${text} —`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showTypingIndicator() {
+  const container = document.getElementById('chatMessages');
+  const existing = container.querySelector('.typing-bubble');
+  if (existing) return;
+  const div = document.createElement('div');
+  div.className = 'msg-bubble ai typing-bubble';
+  div.innerHTML = `
+    <div class="msg-avatar">🤖</div>
+    <div>
+      <div class="msg-content" style="padding: 14px 16px;">
+        <div class="typing-indicator">
+          <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  const el = document.getElementById('chatMessages').querySelector('.typing-bubble');
+  if (el) el.remove();
+}
+
+function clearChatMessages() {
+  document.getElementById('chatMessages').innerHTML = '';
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br/>');
+}
+
+// ============================================================
+//  TOAST
+// ============================================================
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  toast.textContent = `${icons[type] || ''} ${message}`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0'; toast.style.transform = 'translateX(20px)';
+    toast.style.transition = 'all 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+</script>
+</body>
+</html>

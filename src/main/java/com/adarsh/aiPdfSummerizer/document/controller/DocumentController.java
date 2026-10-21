@@ -25,4 +25,17 @@ public class DocumentController {
 
         return ResponseEntity.ok(ApiResponse.success("Files uploaded successfully",document.getId()));
     }
+
+    @org.springframework.web.bind.annotation.GetMapping
+    public ResponseEntity<ApiResponse<java.util.List<java.util.Map<String, Object>>>> listDocuments() {
+        String email = SecurityUtils.getCurrentUserEmail();
+        java.util.List<Document> docs = documentService.getUserDocuments(email);
+        java.util.List<java.util.Map<String, Object>> response = docs.stream().map(d -> {
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", d.getId());
+            map.put("fileName", d.getFileName());
+            return map;
+        }).toList();
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }

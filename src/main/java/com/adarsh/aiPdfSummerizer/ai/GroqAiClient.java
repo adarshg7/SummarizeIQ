@@ -13,13 +13,13 @@ import java.util.Map;
 
 @Service
 public class GroqAiClient implements AiClient{
-    @Value("${ai.provider.base-url}")
+    @Value("${ai.provider.base-url:}")
     private String baseUrl;
 
-    @Value("${ai.provider.api-key}")
+    @Value("${ai.provider.api-key:}")
     private String apiKey;
 
-    @Value("${ai.provider.model}")
+    @Value("${ai.provider.model:}")
     private String model;
 
     private final RestTemplate restTemplate = new RestTemplate();
